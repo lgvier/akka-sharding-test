@@ -1,0 +1,6 @@
+*.class
+.idea
+target/
+project/target
+/dependency-reduced-pom.xml
+/akka-sharding-test.iml

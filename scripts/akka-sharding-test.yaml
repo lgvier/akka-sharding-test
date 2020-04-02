@@ -1,0 +1,87 @@
+---
+apiVersion: "apps/v1"
+kind: Deployment
+metadata:
+  name: "akka-sharding-test"
+  labels:
+    appName: "akka-sharding-test"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      appName: "akka-sharding-test"
+#update
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+
+  template:
+    metadata:
+      labels:
+        appName: "akka-sharding-test"
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: akka-sharding-test
+        image: gcr.io/geosandbox-42/akka-sharding-test:latest
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+        livenessProbe:
+          httpGet:
+            path: /alive
+            port: 8080
+        env:
+        ports:
+        - containerPort: 8558
+          name: management
+        - containerPort: 2552
+          name: remoting
+        volumeMounts: []
+      volumes: []
+
+---
+#headless
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    appName: "akka-sharding-test"
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  name: "akka-sharding-test-internal"
+spec:
+  ports:
+  - name: management
+    port: 8558
+    protocol: TCP
+    targetPort: 8558
+  - name: remoting
+    port: 2552
+    protocol: TCP
+    targetPort: 2552
+  selector:
+    appName: "akka-sharding-test"
+  clusterIP: None
+  publishNotReadyAddresses: true
+
+---
+#public
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    appName: "akka-sharding-test"
+  name: "akka-sharding-test"
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    appName: "akka-sharding-test"
+  # type: LoadBalancer
